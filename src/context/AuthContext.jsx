@@ -1,0 +1,131 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/apiService';
+
+// Crear el contexto
+const AuthContext = createContext();
+
+// Hook personalizado para usar el contexto
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe ser usado dentro de AuthProvider');
+  }
+  return context;
+};
+
+// Proveedor del contexto
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Verificar autenticación al cargar la app
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // Verificar si hay token en localStorage
+        if (authService.isAuthenticated()) {
+          // Intentar obtener usuario actual del servidor
+          const response = await authService.getCurrentUser();
+          if (response.success) {
+            setUser(response.data.user);
+            setIsAuthenticated(true);
+          } else {
+            // Si falla, limpiar localStorage
+            await authService.logout();
+          }
+        }
+      } catch (error) {
+        console.error('Error al verificar autenticación:', error);
+        // Si hay error, limpiar localStorage
+        await authService.logout();
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Función de login
+  const login = async (credentials) => {
+    try {
+      setLoading(true);
+      const response = await authService.login(credentials);
+      
+      if (response.success) {
+        setUser(response.data.user);
+        setIsAuthenticated(true);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, message: response.message || 'Error en login' };
+      }
+    } catch (error) {
+      console.error('Error en login:', error);
+      return { 
+        success: false, 
+        message: error.message || 'Error de conexión',
+        errors: error.errors || {}
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función de registro
+  const register = async (userData) => {
+    try {
+      setLoading(true);
+      const response = await authService.register(userData);
+      
+      if (response.success) {
+        setUser(response.data.user);
+        setIsAuthenticated(true);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, message: response.message || 'Error en registro' };
+      }
+    } catch (error) {
+      console.error('Error en registro:', error);
+      return { 
+        success: false, 
+        message: error.message || 'Error de conexión',
+        errors: error.errors || {}
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función de logout
+  const logout = async () => {
+    try {
+      setLoading(true);
+      await authService.logout();
+    } catch (error) {
+      console.error('Error en logout:', error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+    }
+  };
+
+  // Valores del contexto
+  const value = {
+    user,
+    isAuthenticated,
+    loading,
+    login,
+    register,
+    logout
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
