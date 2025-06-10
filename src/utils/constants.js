@@ -7,6 +7,11 @@ export const API_ENDPOINTS = {
   LOGIN: '/login',
   LOGOUT: '/logout',
   USER: '/user',
+
+
+   // 👤 Endpoints de Perfil de Usuario
+  USER_PROFILE: '/user/profile',
+  USER_PROFILE_UPDATE: '/user/profile',
   
   // 📚 Endpoints de Materias
   MATERIAS: '/materias',
@@ -29,6 +34,11 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   DASHBOARD: '/dashboard',
+
+
+  // 👤 Rutas de Perfil
+  PROFILE: '/perfil',
+
   
   // 📚 Rutas de Materias
   MATERIAS: '/materias',

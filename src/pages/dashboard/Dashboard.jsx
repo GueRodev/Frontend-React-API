@@ -36,7 +36,8 @@ const Dashboard = () => {
       color: 'from-blue-500 to-blue-600',
       hoverColor: 'hover:from-blue-600 hover:to-blue-700',
       stats: '45 materias',
-      path: '/materias'
+      path: '/materias',
+      implemented: true
     },
     {
       id: 'estudiantes',
@@ -46,7 +47,8 @@ const Dashboard = () => {
       color: 'from-green-500 to-green-600',
       hoverColor: 'hover:from-green-600 hover:to-green-700',
       stats: '1,240 estudiantes',
-      path: '/estudiantes'
+      path: '/estudiantes',
+      implemented: false
     },
     {
       id: 'carreras',
@@ -56,7 +58,8 @@ const Dashboard = () => {
       color: 'from-purple-500 to-purple-600',
       hoverColor: 'hover:from-purple-600 hover:to-purple-700',
       stats: '8 carreras',
-      path: '/carreras'
+      path: '/carreras',
+      implemented: false
     },
     {
       id: 'matricula',
@@ -66,7 +69,8 @@ const Dashboard = () => {
       color: 'from-orange-500 to-orange-600',
       hoverColor: 'hover:from-orange-600 hover:to-orange-700',
       stats: 'Período activo',
-      path: '/matricula'
+      path: '/matricula',
+      implemented: false
     },
     {
       id: 'expediente',
@@ -76,7 +80,8 @@ const Dashboard = () => {
       color: 'from-teal-500 to-teal-600',
       hoverColor: 'hover:from-teal-600 hover:to-teal-700',
       stats: 'Vista completa',
-      path: '/expediente'
+      path: '/expediente',
+      implemented: false
     },
     {
       id: 'perfil',
@@ -86,18 +91,20 @@ const Dashboard = () => {
       color: 'from-gray-500 to-gray-600',
       hoverColor: 'hover:from-gray-600 hover:to-gray-700',
       stats: 'Configurar',
-      path: '/perfil'
+      path: '/perfil',
+      implemented: true
     }
   ];
 
-const handleModuleClick = (modulePath) => {
-  if (modulePath === '/materias') {
-    navigate(modulePath);
-  } else {
-    // Por ahora solo mostramos un mensaje para otros módulos
-    console.log(`Navegando a: ${modulePath}`);
-  }
-};
+  // Función mejorada para manejar navegación de módulos
+  const handleModuleClick = (module) => {
+    if (module.implemented) {
+      navigate(module.path);
+    } else {
+      // Mostrar mensaje temporal para módulos no implementados
+      alert(`El módulo "${module.title}" estará disponible próximamente.`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -252,20 +259,31 @@ const handleModuleClick = (modulePath) => {
                 return (
                   <div
                     key={module.id}
-                    onClick={() => handleModuleClick(module.path)}
-                    className="group bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-gray-500/50 hover:shadow-2xl hover:shadow-gray-900/50 hover:-translate-y-1"
+                    onClick={() => handleModuleClick(module)}
+                    className={`group bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 cursor-pointer transition-all duration-300 hover:border-gray-500/50 hover:shadow-2xl hover:shadow-gray-900/50 hover:-translate-y-1 ${
+                      !module.implemented ? 'opacity-75 hover:opacity-90' : ''
+                    }`}
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className={`h-14 w-14 bg-gradient-to-br ${module.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <div className={`h-14 w-14 bg-gradient-to-br ${module.color} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 ${
+                        !module.implemented ? 'opacity-75' : ''
+                      }`}>
                         <IconComponent className="h-7 w-7 text-white" />
                       </div>
                       <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all duration-300" />
                     </div>
                     
                     <div className="space-y-2">
-                      <h4 className="text-lg font-semibold text-white group-hover:text-green-400 transition-colors">
-                        {module.title}
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-lg font-semibold text-white group-hover:text-green-400 transition-colors">
+                          {module.title}
+                        </h4>
+                        {!module.implemented && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                            Próximamente
+                          </span>
+                        )}
+                      </div>
                       <p className="text-gray-400 text-sm">
                         {module.description}
                       </p>

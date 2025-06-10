@@ -8,6 +8,9 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
 
+// 👤 Profile Pages
+import UserProfile from './pages/profile/UserProfile';
+
 // Materias Pages
 import MateriasList from './pages/materias/MateriasList';
 // import MateriaDetail from './pages/materias/MateriaDetail';
@@ -34,6 +37,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 👤 Ruta de Perfil - Protegida */}
+          <Route 
+            path="/perfil" 
+            element={
+              <ProtectedRoute>
+                <UserProfile />
               </ProtectedRoute>
             } 
           />
