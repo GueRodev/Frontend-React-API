@@ -74,15 +74,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Función de registro
+  // Función de registro - SIN login automático
   const register = async (userData) => {
     try {
       setLoading(true);
       const response = await authService.register(userData);
       
       if (response.success) {
-        setUser(response.data.user);
-        setIsAuthenticated(true);
+        // ✅ NO establecer usuario como autenticado
+        // Solo retornar éxito para mostrar mensaje
         return { success: true, data: response.data };
       } else {
         return { success: false, message: response.message || 'Error en registro' };
