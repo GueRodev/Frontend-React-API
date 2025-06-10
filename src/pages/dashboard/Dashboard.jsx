@@ -90,11 +90,14 @@ const Dashboard = () => {
     }
   ];
 
-  const handleModuleClick = (modulePath) => {
-    // Por ahora solo mostramos un mensaje, después navegaremos
+const handleModuleClick = (modulePath) => {
+  if (modulePath === '/materias') {
+    navigate(modulePath);
+  } else {
+    // Por ahora solo mostramos un mensaje para otros módulos
     console.log(`Navegando a: ${modulePath}`);
-    // navigate(modulePath); // Activar cuando tengamos las rutas
-  };
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
