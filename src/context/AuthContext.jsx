@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/apiService';
+import { authService, profileService } from '../services/apiService';
 
 // Crear el contexto
 const AuthContext = createContext();
@@ -74,15 +74,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Función de registro
+  // Función de registro - SIN login automático
   const register = async (userData) => {
     try {
       setLoading(true);
       const response = await authService.register(userData);
       
       if (response.success) {
-        setUser(response.data.user);
-        setIsAuthenticated(true);
+        // ✅ NO establecer usuario como autenticado
+        // Solo retornar éxito para mostrar mensaje
         return { success: true, data: response.data };
       } else {
         return { success: false, message: response.message || 'Error en registro' };
@@ -113,6 +113,46 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 👤 Nueva función para actualizar perfil
+  const updateProfile = async (profileData) => {
+    try {
+      setLoading(true);
+      const response = await profileService.updateProfile(profileData);
+      
+      if (response.success) {
+        // Actualizar el estado del usuario con los nuevos datos
+        setUser(response.data.user);
+        return { success: true, data: response.data };
+      } else {
+        return { success: false, message: response.message || 'Error al actualizar perfil' };
+      }
+    } catch (error) {
+      console.error('Error en actualización de perfil:', error);
+      return { 
+        success: false, 
+        message: error.message || 'Error de conexión',
+        errors: error.errors || {}
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 👤 Nueva función para obtener perfil actualizado
+  const refreshProfile = async () => {
+    try {
+      const response = await profileService.getProfile();
+      if (response.success) {
+        setUser(response.data.user);
+        return { success: true, data: response.data };
+      }
+      return { success: false, message: response.message };
+    } catch (error) {
+      console.error('Error al refrescar perfil:', error);
+      return { success: false, message: error.message || 'Error de conexión' };
+    }
+  };
+
   // Valores del contexto
   const value = {
     user,
@@ -120,7 +160,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
-    logout
+    logout,
+    updateProfile,
+    refreshProfile
   };
 
   return (

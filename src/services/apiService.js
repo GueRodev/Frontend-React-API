@@ -45,17 +45,12 @@ api.interceptors.response.use(
 
 // Servicios de autenticación
 export const authService = {
-  // Registro de usuario
+  // Registro de usuario - SIN login automático
   async register(userData) {
     try {
       const response = await api.post(API_ENDPOINTS.REGISTER, userData);
       
-      // Guardar token y usuario automáticamente
-      if (response.data.success && response.data.data.token) {
-        localStorage.setItem(STORAGE_KEYS.TOKEN, response.data.data.token);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.data.user));
-      }
-      
+      // ✅ NO guardar token automáticamente - solo retornar respuesta
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Error de conexión' };
@@ -67,7 +62,7 @@ export const authService = {
     try {
       const response = await api.post(API_ENDPOINTS.LOGIN, credentials);
       
-      // Guardar token y usuario automáticamente
+      // Guardar token y usuario automáticamente solo en LOGIN
       if (response.data.success && response.data.data.token) {
         localStorage.setItem(STORAGE_KEYS.TOKEN, response.data.data.token);
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.data.user));
@@ -117,6 +112,35 @@ export const authService = {
   getUser() {
     const userString = localStorage.getItem(STORAGE_KEYS.USER);
     return userString ? JSON.parse(userString) : null;
+  }
+};
+
+// Servicios de perfil de usuario
+export const profileService = {
+  // Obtener información completa del perfil
+  async getProfile() {
+    try {
+      const response = await api.get(API_ENDPOINTS.USER_PROFILE);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error al obtener información del perfil' };
+    }
+  },
+
+  // Actualizar información del perfil
+  async updateProfile(profileData) {
+    try {
+      const response = await api.put(API_ENDPOINTS.USER_PROFILE_UPDATE, profileData);
+      
+      // Actualizar usuario en localStorage si la actualización es exitosa
+      if (response.data.success && response.data.data.user) {
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.data.data.user));
+      }
+      
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error al actualizar el perfil' };
+    }
   }
 };
 
