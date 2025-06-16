@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { User, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 
 const Register = () => {
   const { register, loading } = useAuth();
@@ -17,6 +17,190 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, feedback: [] });
+
+  // Contraseñas comunes a evitar
+  const commonPasswords = [
+    'password', '123456789', '12345678', 'qwerty123', 'abc123456', 
+    'password123', '123456abc', 'admin123', 'user123', 'test123'
+  ];
+
+  // Validación de nombre (solo letras, espacios, acentos y guiones)
+  const validateName = (name) => {
+    const nameRegex = /^[a-zA-ZÀ-ÿ\u00f1\u00d1\s\-']+$/;
+    const trimmedName = name.trim();
+    
+    if (!trimmedName) {
+      return ['El nombre es requerido'];
+    }
+    if (trimmedName.length < 2) {
+      return ['El nombre debe tener al menos 2 caracteres'];
+    }
+    if (trimmedName.length > 50) {
+      return ['El nombre no puede exceder 50 caracteres'];
+    }
+    if (!nameRegex.test(trimmedName)) {
+      return ['El nombre solo puede contener letras, espacios, acentos y guiones'];
+    }
+    if (/^\s|\s$/.test(name)) {
+      return ['El nombre no puede empezar o terminar con espacios'];
+    }
+    if (/\s{2,}/.test(trimmedName)) {
+      return ['El nombre no puede tener espacios consecutivos'];
+    }
+    
+    return [];
+  };
+
+  // Validación de email mejorada
+  const validateEmail = (email) => {
+    // Regex que requiere al menos una extensión de dominio válida
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    const trimmedEmail = email.trim().toLowerCase();
+    
+    if (!trimmedEmail) {
+      return ['El email es requerido'];
+    }
+    if (trimmedEmail.length > 254) {
+      return ['El email es demasiado largo'];
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      return ['Por favor ingresa un email válido (ej: usuario@dominio.com)'];
+    }
+    
+    // Validaciones adicionales
+    const [localPart, domain] = trimmedEmail.split('@');
+    if (localPart.length > 64) {
+      return ['La parte local del email es demasiado larga'];
+    }
+    if (domain.length > 253) {
+      return ['El dominio del email es demasiado largo'];
+    }
+    if (localPart.startsWith('.') || localPart.endsWith('.')) {
+      return ['El email no puede empezar o terminar con punto'];
+    }
+    if (localPart.includes('..')) {
+      return ['El email no puede tener puntos consecutivos'];
+    }
+    
+    // Verificar que tenga extensión de dominio válida
+    if (!domain.includes('.')) {
+      return ['El email debe tener una extensión de dominio válida (.com, .org, etc.)'];
+    }
+    
+    // Verificar que la extensión tenga al menos 2 caracteres
+    const parts = domain.split('.');
+    const extension = parts[parts.length - 1];
+    if (extension.length < 2) {
+      return ['La extensión del dominio debe tener al menos 2 caracteres'];
+    }
+    
+    return [];
+  };
+
+  // Análisis de fortaleza de contraseña
+  const analyzePasswordStrength = (password) => {
+    let score = 0;
+    const feedback = [];
+    
+    // Longitud
+    if (password.length >= 8) score += 1;
+    else feedback.push('Mínimo 8 caracteres');
+    
+    if (password.length >= 12) score += 1;
+    
+    // Mayúsculas
+    if (/[A-Z]/.test(password)) score += 1;
+    else feedback.push('Al menos una mayúscula');
+    
+    // Minúsculas
+    if (/[a-z]/.test(password)) score += 1;
+    else feedback.push('Al menos una minúscula');
+    
+    // Números
+    if (/\d/.test(password)) score += 1;
+    else feedback.push('Al menos un número');
+    
+    // Caracteres especiales
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(password)) score += 1;
+    else feedback.push('Al menos un carácter especial');
+    
+    // Penalizaciones
+    if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
+      score -= 2;
+      feedback.push('Evita contraseñas comunes');
+    }
+    
+    if (/(.)\1{2,}/.test(password)) {
+      score -= 1;
+      feedback.push('Evita caracteres repetidos');
+    }
+    
+    if (/123|abc|qwe/i.test(password)) {
+      score -= 1;
+      feedback.push('Evita secuencias simples');
+    }
+    
+    return { score: Math.max(0, Math.min(6, score)), feedback };
+  };
+
+  // Validación de contraseña completa
+  const validatePassword = (password, name = '', email = '') => {
+    const errors = [];
+    
+    if (!password) {
+      return ['La contraseña es requerida'];
+    }
+    
+    if (password.length < 8) {
+      errors.push('Debe tener al menos 8 caracteres');
+    }
+    
+    if (password.length > 128) {
+      errors.push('No puede exceder 128 caracteres');
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Debe contener al menos una mayúscula');
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push('Debe contener al menos una minúscula');
+    }
+    
+    if (!/\d/.test(password)) {
+      errors.push('Debe contener al menos un número');
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>?]/.test(password)) {
+      errors.push('Debe contener al menos un carácter especial (!@#$%^&*...)');
+    }
+    
+    // Verificar que no contenga información personal
+    if (name && password.toLowerCase().includes(name.toLowerCase().split(' ')[0])) {
+      errors.push('No debe contener tu nombre');
+    }
+    
+    if (email && password.toLowerCase().includes(email.split('@')[0].toLowerCase())) {
+      errors.push('No debe contener tu email');
+    }
+    
+    // Verificar contraseñas comunes
+    if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
+      errors.push('No uses contraseñas comunes');
+    }
+    
+    // Verificar patrones simples
+    if (/(.)\1{2,}/.test(password)) {
+      errors.push('Evita repetir el mismo carácter 3+ veces');
+    }
+    
+    if (/123|abc|qwe|asd|zxc/i.test(password)) {
+      errors.push('Evita secuencias del teclado');
+    }
+    
+    return errors;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -24,6 +208,12 @@ const Register = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Actualizar fortaleza de contraseña en tiempo real
+    if (name === 'password') {
+      setPasswordStrength(analyzePasswordStrength(value));
+    }
+    
     // Limpiar error del campo al escribir
     if (errors[name]) {
       setErrors(prev => ({
@@ -36,19 +226,28 @@ const Register = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = ['El nombre es requerido'];
+    // Validar nombre
+    const nameErrors = validateName(formData.name);
+    if (nameErrors.length > 0) {
+      newErrors.name = nameErrors;
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = ['El email es requerido'];
+    // Validar email
+    const emailErrors = validateEmail(formData.email);
+    if (emailErrors.length > 0) {
+      newErrors.email = emailErrors;
     }
 
-    if (formData.password.length < 8) {
-      newErrors.password = ['La contraseña debe tener al menos 8 caracteres'];
+    // Validar contraseña
+    const passwordErrors = validatePassword(formData.password, formData.name, formData.email);
+    if (passwordErrors.length > 0) {
+      newErrors.password = passwordErrors;
     }
 
-    if (formData.password !== formData.password_confirmation) {
+    // Validar confirmación de contraseña
+    if (!formData.password_confirmation) {
+      newErrors.password_confirmation = ['Debes confirmar tu contraseña'];
+    } else if (formData.password !== formData.password_confirmation) {
       newErrors.password_confirmation = ['Las contraseñas no coinciden'];
     }
 
@@ -68,14 +267,26 @@ const Register = () => {
       return;
     }
 
+    // Verificar fortaleza mínima de contraseña
+    if (passwordStrength.score < 4) {
+      setErrors({ password: ['La contraseña no es lo suficientemente segura'] });
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const result = await register(formData);
+      // Limpiar y normalizar datos antes de enviar
+      const cleanData = {
+        name: formData.name.trim().replace(/\s+/g, ' '),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        password_confirmation: formData.password_confirmation
+      };
+
+      const result = await register(cleanData);
       
       if (result.success) {
-        // ✅ Mostrar mensaje de éxito
         setRegistrationSuccess(true);
-        
-        // ✅ Redirigir al login después de 3 segundos
         setTimeout(() => {
           navigate('/login', { 
             state: { 
@@ -97,10 +308,55 @@ const Register = () => {
     }
   };
 
+  // Componente para mostrar fortaleza de contraseña
+  const PasswordStrengthIndicator = () => {
+    if (!formData.password) return null;
+    
+    const getStrengthColor = (score) => {
+      if (score < 2) return 'bg-red-500';
+      if (score < 4) return 'bg-yellow-500';
+      if (score < 5) return 'bg-blue-500';
+      return 'bg-green-500';
+    };
+    
+    const getStrengthText = (score) => {
+      if (score < 2) return 'Muy débil';
+      if (score < 4) return 'Débil';
+      if (score < 5) return 'Buena';
+      return 'Excelente';
+    };
+    
+    return (
+      <div className="mt-2 space-y-2">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-gray-400">Fortaleza:</span>
+          <span className={`text-xs font-medium ${
+            passwordStrength.score < 2 ? 'text-red-400' :
+            passwordStrength.score < 4 ? 'text-yellow-400' :
+            passwordStrength.score < 5 ? 'text-blue-400' : 'text-green-400'
+          }`}>
+            {getStrengthText(passwordStrength.score)}
+          </span>
+        </div>
+        <div className="w-full bg-gray-600/50 rounded-full h-1.5">
+          <div 
+            className={`h-1.5 rounded-full transition-all duration-300 ${getStrengthColor(passwordStrength.score)}`}
+            style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
+          />
+        </div>
+        {passwordStrength.feedback.length > 0 && (
+          <div className="text-xs text-gray-400">
+            Mejoras: {passwordStrength.feedback.join(', ')}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const passwordsMatch = formData.password && formData.password_confirmation && 
                         formData.password === formData.password_confirmation;
 
-  // ✅ Pantalla de éxito mejorada
+  // Pantalla de éxito
   if (registrationSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -115,7 +371,7 @@ const Register = () => {
                 ¡Cuenta Creada!
               </h2>
               <p className="text-gray-300">
-                Tu cuenta ha sido creada exitosamente.
+                Tu cuenta ha sido creada exitosamente con máxima seguridad.
               </p>
               <p className="text-sm text-gray-400">
                 Serás redirigido al inicio de sesión en unos segundos...
@@ -139,7 +395,6 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
-        {/* Card Container */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl shadow-2xl p-8 space-y-8">
           
           {/* Header */}
@@ -151,8 +406,12 @@ const Register = () => {
               Crear Cuenta
             </h2>
             <p className="mt-2 text-sm text-gray-400">
-              Únete a nosotros hoy mismo
+              Únete a nosotros con seguridad máxima
             </p>
+            <div className="flex items-center justify-center mt-2 text-xs text-green-400">
+              <Shield className="h-4 w-4 mr-1" />
+              Validaciones de seguridad activadas
+            </div>
           </div>
 
           {/* Form */}
@@ -169,7 +428,7 @@ const Register = () => {
               {/* Name Field */}
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Nombre completo
+                  Nombre completo *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -180,6 +439,7 @@ const Register = () => {
                     name="name"
                     type="text"
                     required
+                    maxLength="50"
                     value={formData.name}
                     onChange={handleChange}
                     className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
@@ -187,18 +447,22 @@ const Register = () => {
                         ? 'border-red-500/60 focus:border-red-400' 
                         : 'border-gray-600/60 focus:border-green-400/60'
                     } placeholder-gray-500 text-white bg-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-200`}
-                    placeholder="Tu nombre completo"
+                    placeholder="Solo letras y espacios"
                   />
                 </div>
                 {errors.name && (
-                  <p className="mt-2 text-sm text-red-400">{errors.name[0]}</p>
+                  <div className="mt-2 space-y-1">
+                    {errors.name.map((error, index) => (
+                      <p key={index} className="text-sm text-red-400">{error}</p>
+                    ))}
+                  </div>
                 )}
               </div>
 
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Correo electrónico
+                  Correo electrónico *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -209,6 +473,7 @@ const Register = () => {
                     name="email"
                     type="email"
                     required
+                    maxLength="254"
                     value={formData.email}
                     onChange={handleChange}
                     className={`appearance-none relative block w-full pl-10 pr-3 py-3 border ${
@@ -216,18 +481,22 @@ const Register = () => {
                         ? 'border-red-500/60 focus:border-red-400' 
                         : 'border-gray-600/60 focus:border-green-400/60'
                     } placeholder-gray-500 text-white bg-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-200`}
-                    placeholder="tu@ejemplo.com"
+                    placeholder="usuario@dominio.com"
                   />
                 </div>
                 {errors.email && (
-                  <p className="mt-2 text-sm text-red-400">{errors.email[0]}</p>
+                  <div className="mt-2 space-y-1">
+                    {errors.email.map((error, index) => (
+                      <p key={index} className="text-sm text-red-400">{error}</p>
+                    ))}
+                  </div>
                 )}
               </div>
 
               {/* Password Field */}
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Contraseña
+                  Contraseña *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -238,6 +507,7 @@ const Register = () => {
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     required
+                    maxLength="128"
                     value={formData.password}
                     onChange={handleChange}
                     className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
@@ -245,7 +515,7 @@ const Register = () => {
                         ? 'border-red-500/60 focus:border-red-400' 
                         : 'border-gray-600/60 focus:border-green-400/60'
                     } placeholder-gray-500 text-white bg-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-200`}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="8+ caracteres, mayús., núm., símbolos"
                   />
                   <button
                     type="button"
@@ -259,15 +529,22 @@ const Register = () => {
                     )}
                   </button>
                 </div>
+                
+                <PasswordStrengthIndicator />
+                
                 {errors.password && (
-                  <p className="mt-2 text-sm text-red-400">{errors.password[0]}</p>
+                  <div className="mt-2 space-y-1">
+                    {errors.password.map((error, index) => (
+                      <p key={index} className="text-sm text-red-400">{error}</p>
+                    ))}
+                  </div>
                 )}
               </div>
 
               {/* Confirm Password Field */}
               <div>
                 <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirmar contraseña
+                  Confirmar contraseña *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -278,6 +555,7 @@ const Register = () => {
                     name="password_confirmation"
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
+                    maxLength="128"
                     value={formData.password_confirmation}
                     onChange={handleChange}
                     className={`appearance-none relative block w-full pl-10 pr-16 py-3 border ${
@@ -287,7 +565,7 @@ const Register = () => {
                         ? 'border-green-500/60 focus:border-green-400/60' 
                         : 'border-gray-600/60 focus:border-green-400/60'
                     } placeholder-gray-500 text-white bg-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400/20 transition-all duration-200`}
-                    placeholder="Confirma tu contraseña"
+                    placeholder="Repite tu contraseña"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-1">
                     {passwordsMatch && (
@@ -306,7 +584,11 @@ const Register = () => {
                   </div>
                 </div>
                 {errors.password_confirmation && (
-                  <p className="mt-2 text-sm text-red-400">{errors.password_confirmation[0]}</p>
+                  <div className="mt-2 space-y-1">
+                    {errors.password_confirmation.map((error, index) => (
+                      <p key={index} className="text-sm text-red-400">{error}</p>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -315,16 +597,16 @@ const Register = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || loading}
+                disabled={isSubmitting || loading || passwordStrength.score < 4}
                 className="group relative w-full flex justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-gray-900 bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-green-500/25"
               >
                 {isSubmitting ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
-                    <span>Creando cuenta...</span>
+                    <span>Creando cuenta segura...</span>
                   </div>
                 ) : (
-                  'Crear Cuenta'
+                  'Crear Cuenta Segura'
                 )}
               </button>
             </div>
