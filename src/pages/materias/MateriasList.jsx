@@ -21,7 +21,13 @@ import {
   RefreshCw,
   Download,
   Grid3X3,
-  List
+  List,
+  X,
+  Calendar,
+  Users,
+  FileText,
+  Award,
+  MapPin
 } from 'lucide-react';
 
 const MateriasList = () => {
@@ -32,7 +38,8 @@ const MateriasList = () => {
   const [materias, setMaterias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedMateria, setSelectedMateria] = useState(null); // Modal state
   
   // Estados de filtros y búsqueda
   const [search, setSearch] = useState('');
@@ -73,7 +80,6 @@ const MateriasList = () => {
         ...filters
       };
 
-      // Remover parámetros vacíos
       Object.keys(params).forEach(key => {
         if (!params[key]) delete params[key];
       });
@@ -89,7 +95,6 @@ const MateriasList = () => {
           total: response.data.total || 0
         });
         
-        // Calcular estadísticas simples
         if (response.data.data) {
           const totalCreditos = response.data.data.reduce((sum, materia) => sum + (materia.creditos || 0), 0);
           const carrerasCount = response.data.data.reduce((acc, materia) => {
@@ -114,12 +119,10 @@ const MateriasList = () => {
     }
   }, [search, filters, pagination.per_page]);
 
-  // Efecto para cargar materias iniciales
   useEffect(() => {
     loadMaterias(1, true);
   }, []);
 
-  // Efecto para búsqueda con debounce
   useEffect(() => {
     if (searchDebounce) clearTimeout(searchDebounce);
     
@@ -172,16 +175,248 @@ const MateriasList = () => {
       try {
         await materiaService.deleteMateria(codigo);
         loadMaterias(pagination.current_page, true);
-        // Aquí podrías agregar una notificación toast
+        setSelectedMateria(null); // Cerrar modal si está abierto
       } catch (err) {
         alert(err.message || 'Error al eliminar la materia');
       }
     }
   };
 
+  // Modal handlers
+  const openMateriaModal = (materia) => {
+    setSelectedMateria(materia);
+    document.body.style.overflow = 'hidden'; // Prevent scroll
+  };
+
+  const closeMateriaModal = () => {
+    setSelectedMateria(null);
+    document.body.style.overflow = 'unset'; // Restore scroll
+  };
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedMateria) {
+        closeMateriaModal();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedMateria]);
+
+  // Modal Component
+  const MateriaModal = ({ materia, onClose }) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in-0 duration-300"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-gray-800/95 backdrop-blur-md border border-gray-600/50 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden animate-in zoom-in-95 fade-in-0 duration-300">
+        
+        {/* Header */}
+        <div className="relative bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-8 border-b border-gray-700/50">
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 p-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-xl transition-all"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          
+          <div className="flex items-start space-x-6">
+            <div className="h-20 w-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <BookOpen className="h-10 w-10 text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-3xl font-bold text-white mb-2">{materia.nombre}</h2>
+              <p className="text-blue-300 text-lg font-medium mb-2">{materia.codigo}</p>
+              <div className="flex items-center space-x-4">
+                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <Award className="h-4 w-4 mr-2" />
+                  {materia.creditos} créditos
+                </span>
+                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  <GraduationCap className="h-4 w-4 mr-2" />
+                  {materia.nivel}° Año
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+          <div className="space-y-8">
+            
+            {/* Información básica */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-700/30 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <Building2 className="h-5 w-5 mr-2 text-blue-400" />
+                  Información Académica
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Carrera:</span>
+                    <span className="text-white font-medium">{materia.carrera}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Nivel:</span>
+                    <span className="text-white font-medium">{materia.nivel}° Año</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Créditos:</span>
+                    <span className="text-white font-medium">{materia.creditos}</span>
+                  </div>
+                  {materia.modalidad && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Modalidad:</span>
+                      <span className="text-white font-medium">{materia.modalidad}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {materia.profesor && (
+                <div className="bg-gray-700/30 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-green-400" />
+                    Profesor
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Nombre:</span>
+                      <span className="text-white font-medium">{materia.profesor}</span>
+                    </div>
+                    {materia.email_profesor && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Email:</span>
+                        <span className="text-white font-medium">{materia.email_profesor}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Descripción */}
+            {materia.descripcion && (
+              <div className="bg-gray-700/30 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-yellow-400" />
+                  Descripción
+                </h3>
+                <p className="text-gray-300 leading-relaxed">{materia.descripcion}</p>
+              </div>
+            )}
+
+            {/* Prerrequisitos */}
+            {materia.prerequisitos && (
+              <div className="bg-gray-700/30 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <Award className="h-5 w-5 mr-2 text-orange-400" />
+                  Prerrequisitos
+                </h3>
+                <p className="text-gray-300">{materia.prerequisitos}</p>
+              </div>
+            )}
+
+            {/* Horarios */}
+            {materia.horarios && materia.horarios.length > 0 && (
+              <div className="bg-gray-700/30 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-cyan-400" />
+                  Horarios
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {materia.horarios.map((horario, index) => (
+                    <div key={index} className="bg-gray-800/50 rounded-lg p-3">
+                      <p className="text-gray-300 text-sm">{horario}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Información adicional */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {materia.semestre && (
+                <div className="bg-gray-700/30 rounded-xl p-4 text-center">
+                  <Calendar className="h-8 w-8 text-indigo-400 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Semestre</p>
+                  <p className="text-white font-medium">{materia.semestre}</p>
+                </div>
+              )}
+              
+              {materia.aula && (
+                <div className="bg-gray-700/30 rounded-xl p-4 text-center">
+                  <MapPin className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Aula</p>
+                  <p className="text-white font-medium">{materia.aula}</p>
+                </div>
+              )}
+
+              <div className="bg-gray-700/30 rounded-xl p-4 text-center">
+                <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm">Última actualización</p>
+                <p className="text-white font-medium text-xs">
+                  {materia.updated_at ? new Date(materia.updated_at).toLocaleDateString() : 'Sin fecha'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer con acciones */}
+        <div className="border-t border-gray-700/50 p-6 bg-gray-800/50">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-400">
+              Código: {materia.codigo} • Carrera: {materia.carrera}
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  handleViewMateria(materia.codigo);
+                  onClose();
+                }}
+                className="inline-flex items-center px-4 py-2 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-xl hover:bg-blue-500/30 transition-all"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Ver Detalles
+              </button>
+              <button
+                onClick={() => {
+                  handleEditMateria(materia.codigo);
+                  onClose();
+                }}
+                className="inline-flex items-center px-4 py-2 bg-green-500/20 text-green-300 border border-green-500/30 rounded-xl hover:bg-green-500/30 transition-all"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </button>
+              <button
+                onClick={() => handleDeleteMateria(materia.codigo, materia.nombre)}
+                className="inline-flex items-center px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/30 rounded-xl hover:bg-red-500/30 transition-all"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // Componente de tarjeta de materia
   const MateriaCard = ({ materia }) => (
-    <div className="group bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 transition-all duration-300 hover:border-gray-500/50 hover:shadow-2xl hover:shadow-gray-900/50 hover:-translate-y-1">
+    <div 
+      className="group bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6 transition-all duration-300 hover:border-gray-500/50 hover:shadow-2xl hover:shadow-gray-900/50 hover:-translate-y-1 cursor-pointer"
+      onClick={() => openMateriaModal(materia)}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -218,21 +453,30 @@ const MateriasList = () => {
       <div className="flex items-center justify-between pt-4 border-t border-gray-700/50">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleViewMateria(materia.codigo)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewMateria(materia.codigo);
+            }}
             className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
             title="Ver detalles"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleEditMateria(materia.codigo)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditMateria(materia.codigo);
+            }}
             className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
             title="Editar"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleDeleteMateria(materia.codigo, materia.nombre)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteMateria(materia.codigo, materia.nombre);
+            }}
             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
             title="Eliminar"
           >
@@ -248,7 +492,10 @@ const MateriasList = () => {
 
   // Componente de fila de lista
   const MateriaRow = ({ materia }) => (
-    <tr className="bg-gray-800/30 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors">
+    <tr 
+      className="bg-gray-800/30 border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors cursor-pointer"
+      onClick={() => openMateriaModal(materia)}
+    >
       <td className="px-6 py-4">
         <div className="flex items-center space-x-3">
           <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -266,21 +513,30 @@ const MateriasList = () => {
       <td className="px-6 py-4">
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleViewMateria(materia.codigo)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewMateria(materia.codigo);
+            }}
             className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
             title="Ver detalles"
           >
             <Eye className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleEditMateria(materia.codigo)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditMateria(materia.codigo);
+            }}
             className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all"
             title="Editar"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
-            onClick={() => handleDeleteMateria(materia.codigo, materia.nombre)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteMateria(materia.codigo, materia.nombre);
+            }}
             className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
             title="Eliminar"
           >
@@ -383,7 +639,6 @@ const MateriasList = () => {
           {/* Filters and Search */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-              {/* Search */}
               <div className="flex-1 max-w-md">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -397,7 +652,6 @@ const MateriasList = () => {
                 </div>
               </div>
 
-              {/* Controls */}
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
@@ -434,7 +688,6 @@ const MateriasList = () => {
               </div>
             </div>
 
-            {/* Expanded Filters */}
             {showFilters && (
               <div className="mt-6 pt-6 border-t border-gray-700/50">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -499,7 +752,6 @@ const MateriasList = () => {
             )}
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4">
               <p className="text-red-300">{error}</p>
@@ -508,14 +760,12 @@ const MateriasList = () => {
 
           {/* Content */}
           {viewMode === 'grid' ? (
-            /* Grid View */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {materias.map((materia) => (
                 <MateriaCard key={materia.id} materia={materia} />
               ))}
             </div>
           ) : (
-            /* List View */
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-700/50">
@@ -536,7 +786,6 @@ const MateriasList = () => {
             </div>
           )}
 
-          {/* Empty State */}
           {!loading && materias.length === 0 && (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-12 text-center">
               <BookOpen className="h-16 w-16 text-gray-500 mx-auto mb-4" />
@@ -559,7 +808,6 @@ const MateriasList = () => {
             </div>
           )}
 
-          {/* Pagination */}
           {pagination.last_page > 1 && (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-600/30 rounded-2xl p-6">
               <div className="flex items-center justify-between">
@@ -616,6 +864,14 @@ const MateriasList = () => {
           )}
         </div>
       </main>
+
+      {/* Modal */}
+      {selectedMateria && (
+        <MateriaModal 
+          materia={selectedMateria} 
+          onClose={closeMateriaModal}
+        />
+      )}
     </div>
   );
 };
